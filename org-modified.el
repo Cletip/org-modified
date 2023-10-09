@@ -120,7 +120,10 @@ If list of file, org-modified-mode-global is active only in these files."
 	  nil)))
 
     (let ((begin (org-modified-beginning-of-metadatas-pos))
-	  (end (org-modified-end-of-metadatas-pos)))
+	  (end (org-modified-end-of-metadatas-pos))
+	  ;; avoid weird warning
+	  (org-element-use-cache nil)
+	  )
       (save-excursion
 	;; go to heading
 	(funcall org-modified-back-to-heading)
