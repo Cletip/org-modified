@@ -3,6 +3,7 @@
 A minor mode for Emacs’ Org mode that logs when a heading has changed each time.
 
 ** Features
+
 - Insert a log entry when a heading is changed.
 - Full automatic.
    
@@ -16,11 +17,7 @@ A minor mode for Emacs’ Org mode that logs when a heading has changed each tim
       :straight (org-modified
 		 :type git
 		 :host github
-		 :repo "Cletip/org-modified")
-
-      ;; activate the global mode
-
-  )
+		 :repo "Cletip/org-modified"))
 
 #+end_src
 
@@ -29,38 +26,49 @@ A minor mode for Emacs’ Org mode that logs when a heading has changed each tim
 Clone the repository to your local machine:
 
 #+BEGIN_SRC shell
+
 git clone https://github.com/Cletip/org-modified.git
+
 #+END_SRC
 
 Then add the following to your =.emacs= or =init.el= file:
 
 #+BEGIN_SRC elisp
+
 (add-to-list 'load-path "/path/to/org-modified")
 (require 'org-modified)
+
 #+END_SRC
 
 ** Usage
+
 Enable the minor mode =org-modified-mode= in a buffer by running:
 
 #+BEGIN_SRC elisp
+
 (org-modified-mode 1)
+
 #+END_SRC
 
 To enable =org-modified-mode= for all Org files, use:
 
 #+BEGIN_SRC elisp
+
 (org-modified-global-mode 1)
+
 #+END_SRC
 
 ** Customization
+
 You can customize =org-modified-mode-include-files= to decide for which files =org-modified-mode= should be activated.
 
 #+BEGIN_SRC elisp
+
 (setq org-modified-mode-include-files '(list of files))
+
 #+END_SRC
 
 ** Contribution
-Contributions are welcome! Please create an issue or submit a pull request on the [GitHub repository](https://github.com/Cletip/org-modified).
 
-** License
-Licensed under the GNU General Public License v3.0 or later version. See the [[file:LICENSE][LICENSE]] file for details.
+Contributions are welcome! Please create an issue or submit a pull request.
+
