@@ -121,9 +121,9 @@ If list of file, org-modified-mode-global is active only in these files."
 
     (let ((begin (org-modified-beginning-of-metadatas-pos))
 	  (end (org-modified-end-of-metadatas-pos))
-	  ;; avoid weird warning
-	  (org-element-use-cache nil)
 	  )
+      ;; avoid weird warning
+      ;;(org-element-cache-reset)
       (save-excursion
 	;; go to heading
 	(funcall org-modified-back-to-heading)
@@ -136,7 +136,10 @@ If list of file, org-modified-mode-global is active only in these files."
 	    (save-excursion
 	      (goto-char (org-modified-end-of-metadatas-pos))
 	      (insert ":LOGBOOK:" "\n"
-		      ":END:" "\n"))
+		      ":END:" "\n")
+	      ;; avoid weird warning
+	      ;;(org-element-cache-refresh (point))
+	      )
 	    ;; update the position of the end of drawer
 	    (setq end (org-modified-end-of-metadatas-pos)))
 	  ;; after that, go to logbook
@@ -145,7 +148,10 @@ If list of file, org-modified-mode-global is active only in these files."
 	    (goto-char end)
 	    )
 	  ;; and insert a new line
-	  (insert "\n" (format-time-string (car org-modified-template))))))))
+	  (insert "\n" (format-time-string (car org-modified-template)))
+	  ;; avoid weird warning
+	  ;; (org-element-cache-refresh (point))
+	  )))))
 
 (defun org-modified-close-timestamp ()
   "Function that close the open timestamp with the separator `org-modified-separator'"
