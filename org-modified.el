@@ -74,6 +74,8 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defconst org-modified-time 0.15 "Time before when the function `org-modified-open-timestamp' is running")
 
+(defvar org-modified-switch-to-buffer nil "Because sometimes, the buffer change between the time `org-modified-time', we need to switch to this buffer, and so retain the name")
+
 (defun org-modified-back-to-heading-with-id ()
   "Move to the first upper element/heading with an id."
   (while (and (not (org-entry-get (point) "ID")) (org-up-heading-safe))))
@@ -111,11 +113,23 @@ If list of file, org-modified-mode-global is active only in these files."
       (when (search-forward org-modified-string end t)
 	(not (org-modified-line-closed-p))))))
 
+;; tempo ?
+(defun org-modified-kill-other-windows-showing-buffer (buffer-name)
+  "Close all windows showing buffer with BUFFER-NAME except the first one found."
+  (interactive "bBuffer name: ")
+  (let ((first-window (get-buffer-window buffer-name t)))
+    (if first-window
+        (dolist (window (get-buffer-window-list buffer-name nil t))
+          (unless (eq window first-window)
+            (delete-window window)))
+      (message "No windows displaying buffer: %s" buffer-name))))
+
 (defun org-modified-open-timestamp (START END OLD-LEN)
   "Open timestamp for the current org-heading define by `org-modified-back-to-heading'"
   ;; run this function only when 
   (save-restriction
     (widen)
+    (setq org-modified-switch-to-buffer (current-buffer))
     (when 
 	(and
 	 ;; some problem occur when I do an undo or redo
@@ -126,11 +140,19 @@ If list of file, org-modified-mode-global is active only in these files."
 	   (error
 	    nil)))
 
-      ;; very cool, because that resolve the caching problem and the things that are instantanous, like org-insert-heading-hook. caching due to org-translation ?
+      ;; very cool, because that resolve the caching problem and the things that are instantanous, like org-insert-heading-hook. but not optimal for the futur !
       (run-with-timer org-modified-time nil (lambda ()
+
+					      ;; for org-capture. Idk why this is call 4 time, and the buffer is not the buffer of org-capture, but the buffer where is org-capture called
+					      (when (not (eq (current-buffer) org-modified-switch-to-buffer))
+						(switch-to-buffer-other-window org-modified-switch-to-buffer)
+						(org-modified-kill-other-windows-showing-buffer org-modified-switch-to-buffer)
+						)
+
 					      ;; because run with timer, we need to save-restriction and widen again
 					      (save-restriction
 						(widen)
+
 						(let ((begin (org-modified-beginning-of-metadatas-pos))
 						      (end (org-modified-end-of-metadatas-pos))
 						      ;; avoid weird warning
@@ -165,9 +187,8 @@ If list of file, org-modified-mode-global is active only in these files."
 							)
 						      ;; and insert a new line
 						      (insert "\n" (format-time-string (car org-modified-template)))
-						      ;; avoid weird warning
-						      ;; (org-element-cache-refresh (point))
-						      ))))
+						      )))
+						)
 
 					      ))
 
@@ -209,7 +230,8 @@ If list of file, org-modified-mode-global is active only in these files."
   :global nil
   (if org-modified-mode
       (progn
-	(add-hook 'after-save-hook 'org-modified-close-after-save nil t)
+	;; late to avoid "conflit" with org-transclusion-after-save-buffer
+	(add-hook 'after-save-hook 'org-modified-close-after-save 95 t)
 	(add-hook 'after-change-functions 'org-modified-open-timestamp nil t)
 	)
     (progn
