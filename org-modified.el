@@ -121,6 +121,8 @@ If list of file, org-modified-mode-global is active only in these files."
 
     (let ((begin (org-modified-beginning-of-metadatas-pos))
 	  (end (org-modified-end-of-metadatas-pos))
+	  ;; avoid weird warning
+	  ;; (org-element-use-cache nil)
 	  )
       ;; avoid weird warning
       ;;(org-element-cache-reset)
@@ -161,6 +163,8 @@ If list of file, org-modified-mode-global is active only in these files."
 	;; to avoid to recall the hook on save, because we already did it.
 	(after-save-hook nil))
     (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
+    ;; avoid weird warning
+    (org-element-cache-refresh (point))
     (save-buffer)))
 
 (defun org-modified-close-timestamp-in-file (file)
@@ -204,7 +208,7 @@ If list of file, org-modified-mode-global is active only in these files."
       (org-modified-mode))))
 
 ;;;###autoload
-(define-globalized-minor-mode org-modified-global-mode org-modified-mode org-modified-mode-on)
+(define-globalized-minor-mode global-org-modified-mode org-modified-mode org-modified-mode-on)
 
 (provide 'org-modified)
 
