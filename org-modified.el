@@ -72,6 +72,8 @@ If list of file, org-modified-mode-global is active only in these files."
   :type 'function
   :group 'org-modified)
 
+(defconst org-modified-time 0.15 "Time before when the function `org-modified-open-timestamp' is running")
+
 (defun org-modified-back-to-heading-with-id ()
   "Move to the first upper element/heading with an id."
   (while (and (not (org-entry-get (point) "ID")) (org-up-heading-safe))))
@@ -123,44 +125,44 @@ If list of file, org-modified-mode-global is active only in these files."
 	  nil)))
 
     ;; very cool, because that resolve the caching problem and the things that are instantanous, like org-insert-heading-hook
-    (run-with-timer 0.1 nil (lambda ()
-			      (let ((begin (org-modified-beginning-of-metadatas-pos))
-				    (end (org-modified-end-of-metadatas-pos))
-				    ;; avoid weird warning
-				    ;; (org-element-use-cache nil)
-				    )
-				;; avoid weird warning
-				;;(org-element-cache-reset)
-				(save-excursion
-				  ;; go to heading
-				  (funcall org-modified-back-to-heading)
-				  ;; checked that a heading is not already open
-				  (when (not (org-modified-check-heading-open-timestamp-p))
-				    ;; now, let's insert the timestamp to begin the tracking
+    (run-with-timer org-modified-time nil (lambda ()
+					    (let ((begin (org-modified-beginning-of-metadatas-pos))
+						  (end (org-modified-end-of-metadatas-pos))
+						  ;; avoid weird warning
+						  ;; (org-element-use-cache nil)
+						  )
+					      ;; avoid weird warning
+					      ;;(org-element-cache-reset)
+					      (save-excursion
+						;; go to heading
+						(funcall org-modified-back-to-heading)
+						;; checked that a heading is not already open
+						(when (not (org-modified-check-heading-open-timestamp-p))
+						  ;; now, let's insert the timestamp to begin the tracking
 
-				    ;; when we don't find the logbook drawer, create logbook
-				    (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
-				      (save-excursion
-					(goto-char (org-modified-end-of-metadatas-pos))
-					(insert ":LOGBOOK:" "\n"
-						":END:" "\n")
-					;; avoid weird warning
-					;;(org-element-cache-refresh (point))
-					)
-				      ;; update the position of the end of drawer
-				      (setq end (org-modified-end-of-metadatas-pos)))
-				    ;; after that, go to logbook
-				    (if org-log-into-drawer
-					(re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
-				      (goto-char end)
-				      )
-				    ;; and insert a new line
-				    (insert "\n" (format-time-string (car org-modified-template)))
-				    ;; avoid weird warning
-				    ;; (org-element-cache-refresh (point))
-				    )))
+						  ;; when we don't find the logbook drawer, create logbook
+						  (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
+						    (save-excursion
+						      (goto-char (org-modified-end-of-metadatas-pos))
+						      (insert ":LOGBOOK:" "\n"
+							      ":END:" "\n")
+						      ;; avoid weird warning
+						      ;;(org-element-cache-refresh (point))
+						      )
+						    ;; update the position of the end of drawer
+						    (setq end (org-modified-end-of-metadatas-pos)))
+						  ;; after that, go to logbook
+						  (if org-log-into-drawer
+						      (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
+						    (goto-char end)
+						    )
+						  ;; and insert a new line
+						  (insert "\n" (format-time-string (car org-modified-template)))
+						  ;; avoid weird warning
+						  ;; (org-element-cache-refresh (point))
+						  )))
 
-			      ))
+					    ))
 
     ))
 
