@@ -89,7 +89,10 @@ If list of file, org-modified-mode-global is active only in these files."
     (funcall org-modified-back-to-heading)
     (org-end-of-meta-data t)
     (re-search-backward "[^\n]" nil t)
-    (next-line)
+    (condition-case err
+	(next-line) 
+      (error
+       nil))
     (beginning-of-line)
     (point)))
 
@@ -119,41 +122,47 @@ If list of file, org-modified-mode-global is active only in these files."
 	 (error
 	  nil)))
 
-    (let ((begin (org-modified-beginning-of-metadatas-pos))
-	  (end (org-modified-end-of-metadatas-pos))
-	  ;; avoid weird warning
-	  ;; (org-element-use-cache nil)
-	  )
-      ;; avoid weird warning
-      ;;(org-element-cache-reset)
-      (save-excursion
-	;; go to heading
-	(funcall org-modified-back-to-heading)
-	;; checked that a heading is not already open
-	(when (not (org-modified-check-heading-open-timestamp-p))
-	  ;; now, let's insert the timestamp to begin the tracking
+    ;; very cool, because that resolve the caching problem and the things that are instantanous, like org-insert-heading-hook
+    (run-with-timer 0.1 nil (lambda ()
+			      (let ((begin (org-modified-beginning-of-metadatas-pos))
+				    (end (org-modified-end-of-metadatas-pos))
+				    ;; avoid weird warning
+				    ;; (org-element-use-cache nil)
+				    )
+				;; avoid weird warning
+				;;(org-element-cache-reset)
+				(save-excursion
+				  ;; go to heading
+				  (funcall org-modified-back-to-heading)
+				  ;; checked that a heading is not already open
+				  (when (not (org-modified-check-heading-open-timestamp-p))
+				    ;; now, let's insert the timestamp to begin the tracking
 
-	  ;; when we don't find the logbook drawer, create logbook
-	  (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
-	    (save-excursion
-	      (goto-char (org-modified-end-of-metadatas-pos))
-	      (insert ":LOGBOOK:" "\n"
-		      ":END:" "\n")
-	      ;; avoid weird warning
-	      ;;(org-element-cache-refresh (point))
-	      )
-	    ;; update the position of the end of drawer
-	    (setq end (org-modified-end-of-metadatas-pos)))
-	  ;; after that, go to logbook
-	  (if org-log-into-drawer
-	      (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
-	    (goto-char end)
-	    )
-	  ;; and insert a new line
-	  (insert "\n" (format-time-string (car org-modified-template)))
-	  ;; avoid weird warning
-	  ;; (org-element-cache-refresh (point))
-	  )))))
+				    ;; when we don't find the logbook drawer, create logbook
+				    (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
+				      (save-excursion
+					(goto-char (org-modified-end-of-metadatas-pos))
+					(insert ":LOGBOOK:" "\n"
+						":END:" "\n")
+					;; avoid weird warning
+					;;(org-element-cache-refresh (point))
+					)
+				      ;; update the position of the end of drawer
+				      (setq end (org-modified-end-of-metadatas-pos)))
+				    ;; after that, go to logbook
+				    (if org-log-into-drawer
+					(re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
+				      (goto-char end)
+				      )
+				    ;; and insert a new line
+				    (insert "\n" (format-time-string (car org-modified-template)))
+				    ;; avoid weird warning
+				    ;; (org-element-cache-refresh (point))
+				    )))
+
+			      ))
+
+    ))
 
 (defun org-modified-close-timestamp ()
   "Function that close the open timestamp with the separator `org-modified-separator'"
