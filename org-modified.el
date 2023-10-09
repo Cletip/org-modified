@@ -5,7 +5,7 @@
 ;; Author: Clément Payard <clement020302@gmail.com>
 ;; URL: https://github.com/Cletip/org-modified
 ;; Version: 0.1
-;; Package-Requires: ((emacs "26.1") (org "9.4"))
+;; Package-Requires: ((emacs "26.1") (org "9.6"))
 ;; Keywords: track timestamp org
 
 ;; This file is not part of GNU Emacs.
@@ -60,8 +60,8 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defcustom org-modified-template
   (cons 
-   (concat org-modified-string " " "[" (cdr org-timestamp-formats) "]")
-   (concat "[" (cdr org-timestamp-formats) "]"))
+   (concat org-modified-string " " "[" (cdr org-time-stamp-formats) "]")
+   (concat "[" (cdr org-time-stamp-formats) "]"))
   "Cons of two strings: the first is inserted at the start, the second at the stop of tracking."
   :type '(cons string string)
   :group 'org-modified)
@@ -128,16 +128,23 @@ If list of file, org-modified-mode-global is active only in these files."
 	    ;; update the position of the end of drawer
 	    (setq end (org-modified-end-of-metadatas-pos)))
 	  ;; after that, go to logbook
-	  (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
+	  (if org-log-into-drawer
+	      (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
+	    (goto-char end)
+	    )
 	  ;; and insert a new line
 	  (insert "\n" (format-time-string (car org-modified-template)))))
       )
     ))
 
 (defun org-modified-close-timestamp ()
-  "Function that close the opent timestamp with the separator `org-modified-separator'"
+  "Function that close the open timestamp with the separator `org-modified-separator'"
   ;; to avoid an infinite loop where the is an insertion, then modification, so insertion, etc.
-  (let ((after-change-functions (remove 'org-modified-open-timestamp after-change-functions)))
+  (let (
+	;; (after-change-functions (remove 'org-modified-open-timestamp after-change-functions))
+	(inhibit-modification-hooks t)
+	
+	)
     (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))))
 
 (defun org-modified-close-timestamp-in-file (file)
@@ -155,7 +162,8 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defun org-modified-close-after-save ()
   "Function to be called for the hook after save file"
-  (org-modified-close-timestamp-in-file (buffer-file-name)))
+  (org-modified-close-timestamp-in-file (buffer-file-name))
+  )
 
 ;;;###autoload
 (define-minor-mode org-modified-mode
