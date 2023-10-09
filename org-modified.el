@@ -139,13 +139,13 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defun org-modified-close-timestamp ()
   "Function that close the open timestamp with the separator `org-modified-separator'"
-  ;; to avoid an infinite loop where the is an insertion, then modification, so insertion, etc.
   (let (
-	;; (after-change-functions (remove 'org-modified-open-timestamp after-change-functions))
-	(inhibit-modification-hooks t)
-
-	)
-    (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))))
+	;; to avoid an infinite loop where the is an insertion, then modification, so insertion, etc.
+	(after-change-functions (remove 'org-modified-open-timestamp after-change-functions))
+	;; to avoid to recall the hook on save, because we already did it.
+	(after-save-hook nil))
+    (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
+    (save-buffer)))
 
 (defun org-modified-close-timestamp-in-file (file)
   "Function call to close all the timestamp in a particular file"
