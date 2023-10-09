@@ -100,23 +100,27 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defun org-modified-open-timestamp (START END OLD-LEN)
   "Open timestamp for the current org-heading define by `org-modified-back-to-heading'"
-  (save-excursion
-    ;; go to heading
-    (funcall org-modified-back-to-heading)
-    ;; checked that a heading is not already open
-    (when (not (org-modified-check-heading-open-timestamp-p))
-      ;; now, let's insert the timestamp to begin the tracking
-      (let ((end (save-excursion (outline-next-heading) (point))))
-	;; when we don't find the logbook drawer, create logbook
-	(when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
-	  (save-excursion
-	    (goto-char (org-modified-end-of-meta-data-char))
-	    (insert ":LOGBOOK:" "\n"
-		    ":END:" "\n")))
-	;; after that, go to logbook
-	(re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
-	;; and insert a new line
-	(insert "\n" (format-time-string (car org-modified-template)))))))
+  (let ((begin (save-excursion (funcall org-modified-back-to-heading) (point)))
+	(end (save-excursion (org-modified-end-of-meta-data-char) (point))))
+    ;; if the modification is in the drawers, do nothing
+    (when (not (and (>= START begin) (<= START end)))
+      (save-excursion
+	;; go to heading
+	(funcall org-modified-back-to-heading)
+	;; checked that a heading is not already open
+	(when (not (org-modified-check-heading-open-timestamp-p))
+	  ;; now, let's insert the timestamp to begin the tracking
+
+	  ;; when we don't find the logbook drawer, create logbook
+	  (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
+	    (save-excursion
+	      (goto-char (org-modified-end-of-meta-data-char))
+	      (insert ":LOGBOOK:" "\n"
+		      ":END:" "\n")))
+	  ;; after that, go to logbook
+	  (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
+	  ;; and insert a new line
+	  (insert "\n" (format-time-string (car org-modified-template))))))))
 
 (defun org-modified-close-timestamp ()
   "Function that close the opent timestamp with the separator `org-modified-separator'"
