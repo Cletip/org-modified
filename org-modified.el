@@ -108,13 +108,13 @@ If list of file, org-modified-mode-global is active only in these files."
       ;; now, let's insert the timestamp to begin the tracking
       (let ((end (save-excursion (outline-next-heading) (point))))
 	;; when we don't find the logbook drawer, create logbook
-	(when (not (save-excursion (re-search-forward org-modifiedbook-drawer-re end t)))
+	(when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
 	  (save-excursion
 	    (goto-char (org-modified-end-of-meta-data-char))
 	    (insert ":LOGBOOK:" "\n"
 		    ":END:" "\n")))
 	;; after that, go to logbook
-	(re-search-forward (concat ":" (org-modified-into-drawer) ":") end t)
+	(re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
 	;; and insert a new line
 	(insert "\n" (format-time-string (car org-modified-template)))))))
 

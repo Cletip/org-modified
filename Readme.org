@@ -60,7 +60,7 @@ To enable =org-modified-mode= for all Org files, use:
 
 ** Customization
 
-You can customize =org-modified-mode-include-files= to decide for which files =org-modified-mode= should be activated.
+You can customize =org-modified-mode-include-files= to decide for which files =org-modified-global-mode= should be activated.
 
 #+BEGIN_SRC elisp
 
