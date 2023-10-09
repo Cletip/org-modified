@@ -76,9 +76,17 @@ If list of file, org-modified-mode-global is active only in these files."
   "Move to the first upper element/heading with an id."
   (while (and (not (org-entry-get (point) "ID")) (org-up-heading-safe))))
 
-(defun org-modified-end-of-meta-data-char()
-  "Return the position of after last drawer."
+(defun org-modified-beginning-of-metadatas-pos()
+  "Return the position after last drawer."
   (save-excursion
+    (funcall org-modified-back-to-heading)
+    (outline-end-of-heading)
+    (point)))
+
+(defun org-modified-end-of-metadatas-pos()
+  "Return the position after the heading"
+  (save-excursion
+    (funcall org-modified-back-to-heading)
     (org-end-of-meta-data t)
     (re-search-backward "[^\n]" nil t)
     (next-line)
@@ -94,16 +102,16 @@ If list of file, org-modified-mode-global is active only in these files."
 (defun org-modified-check-heading-open-timestamp-p ()
   "At point, return t if heading is open"
   (save-excursion
-    (let ((end (org-modified-end-of-meta-data-char)))
+    (let ((end (org-modified-end-of-metadatas-pos)))
       (when (search-forward org-modified-string end t)
 	(not (org-modified-line-closed-p))))))
 
 (defun org-modified-open-timestamp (START END OLD-LEN)
   "Open timestamp for the current org-heading define by `org-modified-back-to-heading'"
-  (let ((begin (save-excursion (funcall org-modified-back-to-heading) (point)))
-	(end (save-excursion (org-modified-end-of-meta-data-char) (point))))
-    ;; if the modification is in the drawers, do nothing
-    (when (not (and (>= START begin) (<= START end)))
+  (let ((begin (org-modified-beginning-of-metadatas-pos))
+	(end (org-modified-end-of-metadatas-pos)))
+    ;; some problem occur when I do an undo or redo
+    (when (or  (not (eq 'undo last-command)) (not (eq 'redo last-command)))
       (save-excursion
 	;; go to heading
 	(funcall org-modified-back-to-heading)
@@ -114,13 +122,17 @@ If list of file, org-modified-mode-global is active only in these files."
 	  ;; when we don't find the logbook drawer, create logbook
 	  (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
 	    (save-excursion
-	      (goto-char (org-modified-end-of-meta-data-char))
+	      (goto-char (org-modified-end-of-metadatas-pos))
 	      (insert ":LOGBOOK:" "\n"
-		      ":END:" "\n")))
+		      ":END:" "\n"))
+	    ;; update the position of the end of drawer
+	    (setq end (org-modified-end-of-metadatas-pos)))
 	  ;; after that, go to logbook
 	  (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
 	  ;; and insert a new line
-	  (insert "\n" (format-time-string (car org-modified-template))))))))
+	  (insert "\n" (format-time-string (car org-modified-template)))))
+      )
+    ))
 
 (defun org-modified-close-timestamp ()
   "Function that close the opent timestamp with the separator `org-modified-separator'"
@@ -130,6 +142,7 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defun org-modified-close-timestamp-in-file (file)
   "Function call to close all the timestamp in a particular file"
+  ;; when need the first save-excursion, because if it's the same file, the point isn't restore correctly (maybe because find-file change the place of cursor ?)
   (save-window-excursion
     (find-file file)
     (save-excursion
