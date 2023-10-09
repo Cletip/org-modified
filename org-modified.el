@@ -112,6 +112,9 @@ If list of file, org-modified-mode-global is active only in these files."
 	(not (org-modified-line-closed-p))))))
 
 (defun org-modified-open-timestamp (START END OLD-LEN)
+  :LOGBOOK:
+  MODIFIED: [2023-10-09 Mon 22:10]
+  :END:
   "Open timestamp for the current org-heading define by `org-modified-back-to-heading'"
   ;; run this function only when 
   (save-restriction
