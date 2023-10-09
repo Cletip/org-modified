@@ -108,10 +108,19 @@ If list of file, org-modified-mode-global is active only in these files."
 
 (defun org-modified-open-timestamp (START END OLD-LEN)
   "Open timestamp for the current org-heading define by `org-modified-back-to-heading'"
-  (let ((begin (org-modified-beginning-of-metadatas-pos))
-	(end (org-modified-end-of-metadatas-pos)))
-    ;; some problem occur when I do an undo or redo
-    (when (or  (not (eq 'undo last-command)) (not (eq 'redo last-command)))
+  ;; run this function only when 
+  (when 
+      (and
+       ;; some problem occur when I do an undo or redo
+       (or  (not (eq 'undo last-command)) (not (eq 'redo last-command)))
+       ;; don't want if there is no back-heading
+       (condition-case err
+	   (save-excursion (funcall org-modified-back-to-heading)) 
+	 (error
+	  nil)))
+
+    (let ((begin (org-modified-beginning-of-metadatas-pos))
+	  (end (org-modified-end-of-metadatas-pos)))
       (save-excursion
 	;; go to heading
 	(funcall org-modified-back-to-heading)
@@ -133,9 +142,7 @@ If list of file, org-modified-mode-global is active only in these files."
 	    (goto-char end)
 	    )
 	  ;; and insert a new line
-	  (insert "\n" (format-time-string (car org-modified-template)))))
-      )
-    ))
+	  (insert "\n" (format-time-string (car org-modified-template))))))))
 
 (defun org-modified-close-timestamp ()
   "Function that close the open timestamp with the separator `org-modified-separator'"
