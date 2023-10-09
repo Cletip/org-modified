@@ -143,7 +143,7 @@ If list of file, org-modified-mode-global is active only in these files."
   (let (
 	;; (after-change-functions (remove 'org-modified-open-timestamp after-change-functions))
 	(inhibit-modification-hooks t)
-	
+
 	)
     (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))))
 
@@ -171,7 +171,8 @@ If list of file, org-modified-mode-global is active only in these files."
   :global nil
   (if org-modified-mode
       (progn
-	(add-hook 'after-save-hook 'org-modified-close-after-save nil t)
+	;; we need this late, because org-transclusion-after-save-buffer
+	(add-hook 'after-save-hook 'org-modified-close-after-save 95 t)
 	(add-hook 'after-change-functions 'org-modified-open-timestamp nil t)
 	)
     (progn
