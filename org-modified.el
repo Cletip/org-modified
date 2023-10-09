@@ -200,7 +200,7 @@ If list of file, org-modified-mode-global is active only in these files."
   "Function use to activate org-modified-mode with the global mode"
   (when (eq major-mode 'org-mode)
     (when (or (eq t org-modified-mode-include-files)
-	      (memq (buffer-file-name) org-modified-mode-include-files))
+	      (member (buffer-file-name) org-modified-mode-include-files))
       (org-modified-mode))))
 
 ;;;###autoload
