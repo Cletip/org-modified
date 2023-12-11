@@ -67,14 +67,27 @@ If list of file, org-modified-mode-global is active only in these files."
   :group 'org-modified)
 
 (defcustom org-modified-back-to-heading #'org-back-to-heading
-  "Function to locate the heading where the open timestamp is placed.
-`org-modified-back-to-heading-with-id' is a good alternative."
+  "Function to locate the heading where the open timestamp is placed. If the heading locating by this function has no id, create one to conserve the place where he is.
+`org-modified-back-to-heading-with-id' is a good alternative. "
   :type 'function
   :group 'org-modified)
 
-(defconst org-modified-time 0.15 "Time before when the function `org-modified-open-timestamp' is running")
+;; mettre un if org-roam present, alors org-roam-id-open
+;; (org-id-open "9927c4c1-5bea-4251-a890-956ccce5ea3e" nil)
+;; (org-roam-id-open '9927c4c1-5bea-4251-a890-956ccce5ea3e nil)
+(defcustom org-modified-go-to-open-heading #'org-id-open
+  "Function to locate the heading where the open timestamp is placed. If the heading locating by this function has no id, create one to conserve the place where he is.
+`org-modified-back-to-heading-with-id' is a good alternative. "
+  :type 'function
+  :group 'org-modified)
 
-(defvar org-modified-switch-to-buffer nil "Because sometimes, the buffer change between the time `org-modified-time', we need to switch to this buffer, and so retain the name")
+(defcustom org-modified-fusion-time 1
+  "Number of minutes specifying the interval for fusing timestamps of two events in Org mode.
+Events with timestamps within this interval are considered for fusion."
+  :type 'integer
+  :group 'org)
+
+(defvar org-modified--open-heading nil "Id of the current open heading")
 
 (defun org-modified-back-to-heading-with-id ()
   "Move to the first upper element/heading with an id."
@@ -88,141 +101,156 @@ If list of file, org-modified-mode-global is active only in these files."
     (point)))
 
 (defun org-modified-end-of-metadatas-pos()
-  "Return the position after the heading"
+  "Return the position after the heading after metadatas. If none, return the char where the drawer \"Logbook\" must me inserted"
   (save-excursion
     (funcall org-modified-back-to-heading)
     (org-end-of-meta-data t)
     (re-search-backward "[^\n]" nil t)
     (condition-case err
-	(next-line) 
+	(forward-line 1)
       (error
        nil))
     (beginning-of-line)
     (point)))
 
-(defun org-modified-line-closed-p ()
-  "Check if the line is closed."
-  (string-match-p org-modified-separator
-		  ;; return the line as string
-		  (buffer-substring-no-properties (line-beginning-position) (line-end-position))))
-
-(defun org-modified-check-heading-open-timestamp-p ()
-  "At point, return t if heading is open"
+(defun org-modified--get-previous-date ()
+  "Check if the timestamp from the current cursor position to end of line is newer than one day. Return nil if no previous date."
+  (interactive)
   (save-excursion
-    (let ((end (org-modified-end-of-metadatas-pos)))
-      (when (search-forward org-modified-string end t)
-	(not (org-modified-line-closed-p))))))
+    ;; move to the correct point
+    (when (re-search-forward org-modified-string nil t)
+      (re-search-forward org-modified-separator nil t)
+      (re-search-forward org-element--timestamp-regexp nil t)
+      ;; return the string
+      (match-string-no-properties 1))))
 
-;; tempo ?
-(defun org-modified-kill-other-windows-showing-buffer (buffer-name)
-  "Close all windows showing buffer with BUFFER-NAME except the first one found."
-  (interactive "bBuffer name: ")
-  (let ((first-window (get-buffer-window buffer-name t)))
-    (if first-window
-        (dolist (window (get-buffer-window-list buffer-name nil t))
-          (unless (eq window first-window)
-            (delete-window window)))
-      (message "No windows displaying buffer: %s" buffer-name))))
+(defun org-modified--fusion-p (date)
+  "Return t if the current time is within `org-modified-fusion-time` minutes of DATE.
+DATE is expected to be in a human-readable format."
+  (let* ((date-time (date-to-time date)) ; Convert human-readable date to time format
+         (current-time (current-time))    ; Get the current time
+         (diff (time-subtract current-time date-time)) ; Calculate the difference
+         (minutes-diff (/ (float-time diff) 60))) ; Convert the difference to minutes
+    (<= minutes-diff (+ 1 org-modified-fusion-time))))
 
-(defun org-modified-open-timestamp (START END OLD-LEN)
+(defun org-modified--reopen-timestamp ()
+  "At a logbook"
+  (re-search-forward org-modified-string nil t)
+  (re-search-forward org-modified-separator nil t)
+  (goto-char (match-beginning 0))
+  (delete-region (point) (line-end-position))
+  )
+
+(defun org-modified-open-timestamp (id)
   "Open timestamp for the current org-heading define by `org-modified-back-to-heading'"
-  ;; run this function only when 
-  (save-restriction
-    (widen)
-    (setq org-modified-switch-to-buffer (current-buffer))
-    (when 
-	(and
-	 ;; some problem occur when I do an undo or redo
-	 (or  (not (eq 'undo last-command)) (not (eq 'redo last-command)))
-	 ;; don't want if there is no back-heading
-	 (condition-case err
-	     (save-excursion (funcall org-modified-back-to-heading)) 
-	   (error
-	    nil)))
 
-      ;; very cool, because that resolve the caching problem and the things that are instantanous, like org-insert-heading-hook. but not optimal for the futur !
-      (run-with-timer org-modified-time nil (lambda ()
+  ;; check if there is a drawer. If none, open one
+  (save-excursion
+    (let ( (end (save-excursion (outline-next-heading) (- (point) 1))))
+      (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
+	(save-excursion
+	  (goto-char (org-modified-end-of-metadatas-pos))
+	  (insert ":LOGBOOK:" "\n"
+		  ":END:" "\n")))))
 
-					      ;; for org-capture. Idk why this is call 4 time, and the buffer is not the buffer of org-capture, but the buffer where is org-capture called
-					      (when (not (eq (current-buffer) org-modified-switch-to-buffer))
-						(switch-to-buffer-other-window org-modified-switch-to-buffer)
-						(org-modified-kill-other-windows-showing-buffer org-modified-switch-to-buffer)
-						)
+  (save-excursion
+    (let ((begin (org-modified-beginning-of-metadatas-pos))
+	  (end (org-modified-end-of-metadatas-pos)))
+      ;; go to place where insert
+      (if org-log-into-drawer
+	  (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
+	(goto-char end))
 
-					      ;; because run with timer, we need to save-restriction and widen again
-					      (save-restriction
-						(widen)
+      (let* ((previous-date (org-modified--get-previous-date)))
+	;; several case here
+	(cond
+	 ;; TODO exeception, for example date of creation
+	 ;; ((call each function in a list of exclude, with previous-date and id) nil)
+	 ;; if previous date is org-modified-fusion-time before, open the previous timestamp
+	 ((and previous-date (org-modified--fusion-p previous-date))
 
-						(let ((begin (org-modified-beginning-of-metadatas-pos))
-						      (end (org-modified-end-of-metadatas-pos))
-						      ;; avoid weird warning
-						      ;; (org-element-use-cache nil)
-						      ;; avoid infinite loop
-						      (after-change-functions (remove 'org-modified-open-timestamp after-change-functions))
-						      )
-						  ;; avoid weird warning
-						  ;;(org-element-cache-reset)
-						  (save-excursion
-						    ;; go to heading
-						    (funcall org-modified-back-to-heading)
-						    ;; checked that a heading is not already open
-						    (when (not (org-modified-check-heading-open-timestamp-p))
-						      ;; now, let's insert the timestamp to begin the tracking
+	  (org-modified--reopen-timestamp)
 
-						      ;; when we don't find the logbook drawer, create logbook
-						      (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
-							(save-excursion
-							  (goto-char (org-modified-end-of-metadatas-pos))
-							  (insert ":LOGBOOK:" "\n"
-								  ":END:" "\n")
-							  ;; avoid weird warning
-							  ;;(org-element-cache-refresh (point))
-							  )
-							;; update the position of the end of drawer
-							(setq end (org-modified-end-of-metadatas-pos)))
-						      ;; after that, go to logbook
-						      (if org-log-into-drawer
-							  (re-search-forward (concat ":" (org-log-into-drawer) ":") end t)
-							(goto-char end)
-							)
-						      ;; and insert a new line
-						      (insert "\n" (format-time-string (car org-modified-template)))
-						      )))
-						)
+	  )
+	 (t 
+	  ;; insert new line with new open timestamp
+	  (insert "\n" (format-time-string (car org-modified-template)))))
+	))
 
-					      ))
-
-      )))
+    ;; save the id close the timestamp
+    (setq org-modified--open-heading id)
+    ;; hook to maintain consistent way even if the buffer is closed
+    ;; replace by another function and a list ?
+    (add-hook 'before-save-hook 'org-modified-close-timestamp nil t)))
 
 (defun org-modified-close-timestamp ()
-  "Function that close the open timestamp with the separator `org-modified-separator'"
-  (let (
-	;; to avoid an infinite loop where the is an insertion, then modification, so insertion, etc.
-	(after-change-functions (remove 'org-modified-open-timestamp after-change-functions))
-	;; to avoid to recall the hook on save, because we already did it.
-	(after-save-hook nil))
-    (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
-    ;; avoid weird warning
-    (org-element-cache-refresh (point))
-    (save-buffer)))
-
-(defun org-modified-close-timestamp-in-file (file)
-  "Function call to close all the timestamp in a particular file"
-  ;; when need the first save-excursion, because if it's the same file, the point isn't restore correctly (maybe because find-file change the place of cursor ?)
+  "Function call to close the open timestamp"
+  ;; for another file
   (save-window-excursion
-    (find-file file)
+    ;; same file
     (save-excursion
-      (beginning-of-buffer)
-      (while (search-forward org-modified-string nil t)
-	(end-of-line)
-	(when (not (org-modified-line-closed-p))
-	  (org-modified-close-timestamp))
-	(re-search-forward org-property-end-re nil t)))))
+      ;; found id ?
+      (if (org-id-find org-modified--open-heading 'marker)
+	  (progn
+	    (funcall org-modified-go-to-open-heading org-modified--open-heading nil)
+	    ;; go to the line where the timestamp is open
+	    (re-search-forward org-modified-string nil t)
+	    (end-of-line)
+	    ;; close the timestamp
+	    (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
 
-(defun org-modified-close-after-save ()
-  "Function to be called for the hook after save file"
-  (org-modified-close-timestamp-in-file (buffer-file-name))
-  )
+	    ;; remove local hook
+	    (remove-hook 'before-save-hook 'org-modified-close-timestamp t)
+
+	    )
+	;; case of not found the id
+	(message "Org-modified : Previous heading not found to close timestamp. Id not found: %s" org-modified--open-heading)	
+	)
+
+      ;; suppress id in all case, because closed
+      (setq org-modified--open-heading nil)
+      )))
+
+(defun org-modified-update-timestamp()
+  ""
+  ;; because that can be call everywhere du to certain advices
+  (when org-modified-mode
+    (let ((current-heading-id nil))
+      (save-excursion
+	(save-restriction
+	  (widen)
+	  (when 
+	      (and
+
+
+
+
+	       ;; some problem occur when I do an undo or redo
+	       (or
+		(not (eq 'undo last-command)) (not (eq 'redo last-command))
+		;; (not (eq 'undo this-command)) (not (eq 'redo this-command))
+
+		)
+	       ;; don't want if there is no back-heading
+	       (condition-case err
+		   (progn (funcall org-modified-back-to-heading)
+			  ;; create an id if there is not : only way to have a unique place.
+			  (setq current-heading-id (org-id-get-create)))
+		 
+		 (error
+		  nil))))
+
+
+
+	  ;; case where open new one
+	  ;; where (eq current-heading-id org-modified--open-heading), when need to do nothing
+	  (when (not (equal current-heading-id org-modified--open-heading))
+	    ;; close the old if there is one
+	    (when org-modified--open-heading
+	      (org-modified-close-timestamp))
+	    ;; open the new
+	    (org-modified-open-timestamp current-heading-id)
+	    ))))))
 
 ;;;###autoload
 (define-minor-mode org-modified-mode
@@ -230,13 +258,28 @@ If list of file, org-modified-mode-global is active only in these files."
   :global nil
   (if org-modified-mode
       (progn
-	;; late to avoid "conflit" with org-transclusion-after-save-buffer
-	(add-hook 'after-save-hook 'org-modified-close-after-save 95 t)
-	(add-hook 'after-change-functions 'org-modified-open-timestamp nil t)
+
+	(add-hook 'post-self-insert-hook 'org-modified-update-timestamp nil t)
+
+	(advice-add 'yank :after #'org-modified-update-timestamp)
+	(advice-add 'kill-region :after #'(lambda (_ _ &optional REGION) (org-modified-update-timestamp)))
+
+	;; TODO if org-modified-log-states (log when todo, done, schedule, etc)
+
+	;; if org-modified-org-schedule
+	(advice-add 'org--deadline-or-schedule :after #'(lambda (_ _ _) (org-modified-update-timestamp)))
+	
+
 	)
     (progn
-      (remove-hook 'after-save-hook 'org-modified-close-after-save t)
-      (remove-hook 'after-change-functions 'org-modified-open-timestamp t)
+      
+      (remove-hook 'post-self-insert-hook 'org-modified-update-timestamp t)
+
+      (advice-remove 'yank #'org-modified-update-timestamp)
+      (advice-remove 'kill-region  #'(lambda (_ _ &optional REGION) (org-modified-update-timestamp)))
+
+      (advice-remove 'org--deadline-or-schedule #'(lambda (_ _ _) (org-modified-update-timestamp)))
+
       )))
 
 (defun org-modified-mode-on ()
