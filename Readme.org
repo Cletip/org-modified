@@ -68,6 +68,8 @@ You can customize =org-modified-mode-include-files= to decide for which files =o
 
 #+END_SRC
 
+org-modified-keep-id-p, if t, keep the id created by org-modified.
+
 ** Contribution
 
 Contributions are welcome! Please create an issue or submit a pull request.

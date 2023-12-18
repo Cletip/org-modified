@@ -85,11 +85,22 @@ If list of file, org-modified-mode-global is active only in these files."
   "Number of minutes specifying the interval for fusing timestamps of two events in Org mode.
 Events with timestamps within this interval are considered for fusion."
   :type 'integer
-  :group 'org)
+  :group 'org-modified)
 
 (defvar org-modified--open-heading nil "Id of the current open heading")
 
+(defcustom org-modified-keep-id-p nil
+  "If t, keep the id after the suppress of `org-modified--suppress-id-propertie'"
+  :type 'boolean
+  :group 'org-modified)
+
+(defvar org-modified--suppress-id-propertie "ORG-MODIFIED-SUPPRESS" "Name of propertie to have know if we must suppress the id")
+
 (defun org-modified-back-to-heading-with-id ()
+  "Move to the first upper element/heading with an id."
+  (while (and (not (org-entry-get (point) "ID")) (org-up-heading-safe))))
+
+(defun org-modified-back-to-heading-with-id-roam ()
   "Move to the first upper element/heading with an id."
   (while (and (not (org-entry-get (point) "ID")) (org-up-heading-safe))))
 
@@ -199,6 +210,13 @@ DATE is expected to be in a human-readable format."
 	    ;; close the timestamp
 	    (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
 
+
+	    ;; keep the id or not
+	    (when (intern (org-entry-get (point) org-modified--suppress-id-propertie nil 'literal-nil))
+	      (org-entry-delete nil "ID"))
+	    ;; In all case, delete the property to know if we must delete ID
+	    (org-entry-delete nil org-modified--suppress-id-propertie)
+
 	    ;; remove local hook
 	    (remove-hook 'before-save-hook 'org-modified-close-timestamp t)
 
@@ -207,8 +225,11 @@ DATE is expected to be in a human-readable format."
 	(message "Org-modified : Previous heading not found to close timestamp. Id not found: %s" org-modified--open-heading)	
 	)
 
-      ;; suppress id in all case, because closed
+      ;; suppress id of org-modified in all case, because closed
       (setq org-modified--open-heading nil)
+
+      ;; TODO run some hook of org-modified here
+
       )))
 
 (defun org-modified-update-timestamp()
@@ -234,13 +255,22 @@ DATE is expected to be in a human-readable format."
 	       ;; don't want if there is no back-heading
 	       (condition-case err
 		   (progn (funcall org-modified-back-to-heading)
+			  
+			  ;; if we don't have always seen this heading
+			  (when (not (org-entry-get (point) org-modified--suppress-id-propertie))
+			    ;; when a id before, don't suppress
+			    (if (org-entry-get (point) "ID")
+				(org-entry-put (point) org-modified--suppress-id-propertie "nil")
+			      ;; if we want to keep the id, keep the id
+			      (if org-modified-keep-id-p
+				  (org-entry-put (point) org-modified--suppress-id-propertie "nil")
+				;; else, remove the id when we finish
+				(org-entry-put (point) org-modified--suppress-id-propertie "t"))))
+
 			  ;; create an id if there is not : only way to have a unique place.
 			  (setq current-heading-id (org-id-get-create)))
-		 
 		 (error
 		  nil))))
-
-
 
 	  ;; case where open new one
 	  ;; where (eq current-heading-id org-modified--open-heading), when need to do nothing
