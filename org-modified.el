@@ -302,7 +302,9 @@ DATE is expected to be in a human-readable format."
 
 	)
     (progn
-      
+      ;; close open heading
+      (org-modified-close-timestamp)
+
       (remove-hook 'post-self-insert-hook 'org-modified-update-timestamp t)
 
       (advice-remove 'yank #'org-modified-update-timestamp)
