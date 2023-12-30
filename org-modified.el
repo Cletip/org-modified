@@ -202,27 +202,45 @@ DATE is expected to be in a human-readable format."
     (save-excursion
       ;; found id ?
       (if (org-id-find org-modified--open-heading 'marker)
+
 	  (progn
+	    ;; if yes, go to the id
 	    (funcall org-modified-go-to-open-heading org-modified--open-heading nil)
-	    ;; go to the line where the timestamp is open
-	    (re-search-forward org-modified-string nil t)
-	    (end-of-line)
-	    ;; close the timestamp
-	    (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
 
+	    ;; save excursion to clear the heading after
+	    (save-excursion
+	      ;; define where to start and end the research to close timestamp
+	      (let ((end (org-modified-end-of-metadatas-pos)))
 
+		;; go to the line where the timestamp is open
+		(if (re-search-forward org-modified-string end t)
+		    (progn
+		      (end-of-line)
+		      ;; close the timestamp
+		      (insert (concat org-modified-separator (format-time-string (cdr org-modified-template))))
+
+		      )
+		  ;; case of not found org-modified-string
+		  (message "Org-modified : Previous org-modified-string not found to close the timestamp, with ID: %s" org-modified--open-heading)
+		  )
+
+		)
+	      )
+	    
+	    ;; after find the heading, we must clear that
 	    ;; keep the id or not
 	    (when (intern (org-entry-get (point) org-modified--suppress-id-propertie nil 'literal-nil))
 	      (org-entry-delete nil "ID"))
 	    ;; In all case, delete the property to know if we must delete ID
 	    (org-entry-delete nil org-modified--suppress-id-propertie)
-
 	    ;; remove local hook
 	    (remove-hook 'before-save-hook 'org-modified-close-timestamp t)
+	    
 
 	    )
+
 	;; case of not found the id
-	(message "Org-modified : Previous heading not found to close timestamp. Id not found: %s" org-modified--open-heading)	
+	(message "Org-modified : Previous heading not found to close timestamp. ID not found: %s" org-modified--open-heading)	
 	)
 
       ;; suppress id of org-modified in all case, because closed
