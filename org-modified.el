@@ -229,7 +229,7 @@ DATE is expected to be in a human-readable format."
 	    
 	    ;; after find the heading, we must clear that
 	    ;; keep the id or not
-	    (when (intern (org-entry-get (point) org-modified--suppress-id-propertie nil 'literal-nil))
+	    (when (equal (org-entry-get (point) org-modified--suppress-id-propertie nil 'literal-nil) "t")
 	      (org-entry-delete nil "ID"))
 	    ;; In all case, delete the property to know if we must delete ID
 	    (org-entry-delete nil org-modified--suppress-id-propertie)
@@ -240,7 +240,7 @@ DATE is expected to be in a human-readable format."
 	    )
 
 	;; case of not found the id
-	(message "Org-modified : Previous heading not found to close timestamp. ID not found: %s" org-modified--open-heading)	
+	(message "Org-modified : Previous heading not found to close timestamp. ID not found: %s" org-modified--open-heading)
 	)
 
       ;; suppress id of org-modified in all case, because closed
