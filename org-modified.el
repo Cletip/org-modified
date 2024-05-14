@@ -52,7 +52,9 @@ It provides facilities to insert and manage timestamps associated with modificat
 (defcustom org-modified-mode-include-files t
   "If this variable is t, org-modified-mode is for all files.
 If nil, deactivate org-modified-mode.
-If list of file, org-modified-mode-global is active only in these files."
+If list of file, org-modified-mode-global is active only in these files.
+If it's a function (dynamic evaluated in the current buffer), the function have to return a value non nil to activate org-modified-mode.
+"
   :type '(choice (const :tag "All Files" t)
                  (const :tag "No Files" nil)
                  (repeat :tag "Specific Files" file))
@@ -336,6 +338,7 @@ DATE is expected to be in a human-readable format."
   "Function use to activate org-modified-mode with the global mode"
   (when (eq major-mode 'org-mode)
     (when (or (eq t org-modified-mode-include-files)
+	      (and (functionp org-modified-mode-include-files) (funcall org-modified-mode-include-files))
 	      (member (buffer-file-name) org-modified-mode-include-files))
       (org-modified-mode))))
 
