@@ -204,7 +204,6 @@ DATE is expected to be in a human-readable format."
     (save-excursion
       ;; found id ?
       (if (org-id-find org-modified--open-heading 'marker)
-
 	  (progn
 	    ;; if yes, go to the id
 	    (funcall org-modified-go-to-open-heading org-modified--open-heading nil)
@@ -322,8 +321,6 @@ DATE is expected to be in a human-readable format."
 
 	)
     (progn
-      ;; close open heading
-      (org-modified-close-timestamp)
 
       (remove-hook 'post-self-insert-hook 'org-modified-update-timestamp t)
 
@@ -331,6 +328,10 @@ DATE is expected to be in a human-readable format."
       (advice-remove 'kill-region  #'(lambda (_ _ &optional REGION) (org-modified-update-timestamp)))
 
       (advice-remove 'org--deadline-or-schedule #'(lambda (_ _ _) (org-modified-update-timestamp)))
+
+      ;; close open heading, at the end to be sure don't interfere with the rest
+      (org-modified-close-timestamp)
+      ;; not here, because that will do that for each buffer, and update org-id location each time !
 
       )))
 
@@ -344,6 +345,13 @@ DATE is expected to be in a human-readable format."
 
 ;;;###autoload
 (define-globalized-minor-mode global-org-modified-mode org-modified-mode org-modified-mode-on)
+
+(defun global-org-modified-check-and-close-timestamps ()
+  "Check if global-org-modified-mode is nil and close timestamps if so."
+  (unless global-org-modified-mode
+    (org-modified-close-timestamp)))
+
+(add-hook 'global-org-modified-mode-hook 'global-org-modified-check-and-close-timestamps)
 
 (provide 'org-modified)
 
