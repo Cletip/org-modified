@@ -163,8 +163,10 @@ DATE is expected to be in a human-readable format."
       (when (not (save-excursion (re-search-forward org-logbook-drawer-re end t)))
 	(save-excursion
 	  (goto-char (org-modified-end-of-metadatas-pos))
-	  (insert ":LOGBOOK:" "\n"
-		  ":END:" "\n")))))
+	  (org-insert-drawer nil (org-log-into-drawer))
+	  ;; consistant opening
+	  (delete-char 1)
+	  ))))
 
   (save-excursion
     (let ((begin (org-modified-beginning-of-metadatas-pos))
@@ -202,7 +204,7 @@ DATE is expected to be in a human-readable format."
   (save-window-excursion
     ;; same file
     (save-excursion
-      ;; found id ?
+      ;; found id ? todo other function to not print
       (if (org-id-find org-modified--open-heading 'marker)
 	  (progn
 	    ;; if yes, go to the id
@@ -241,7 +243,9 @@ DATE is expected to be in a human-readable format."
 	    )
 
 	;; case of not found the id
-	(message "Org-modified : Previous heading not found to close timestamp. ID not found: %s" org-modified--open-heading)
+	(if org-modified--open-heading
+	    nil
+	  (message "Org-modified : Previous heading not found to close timestamp. ID not found: %s" org-modified--open-heading))
 	)
 
       ;; suppress id of org-modified in all case, because closed
@@ -261,10 +265,6 @@ DATE is expected to be in a human-readable format."
 	  (widen)
 	  (when 
 	      (and
-
-
-
-
 	       ;; some problem occur when I do an undo or redo
 	       (or
 		(not (eq 'undo last-command)) (not (eq 'redo last-command))
@@ -300,6 +300,47 @@ DATE is expected to be in a human-readable format."
 	    ;; open the new
 	    (org-modified-open-timestamp current-heading-id)
 	    ))))))
+
+(defun org-modified--clear-modified-entries ()
+  "Clear all MODIFIED entries from the LOGBOOK drawer of the current heading.
+      If the drawer is empty afterward, remove it."
+
+  (let ((org-modified-mode-p org-modified-mode))
+
+    (when org-modified-mode-p
+      (org-modified-mode -1))
+
+    (save-excursion
+      (when (re-search-forward (concat ":" (org-log-into-drawer) ":") nil t)
+	(let ((logbook-start (line-beginning-position))
+	      (logbook-end (save-excursion (re-search-forward ":END:" nil t))))
+	  ;; suppress element with MODIFIED: in the drawer
+	  (save-restriction
+	    (narrow-to-region logbook-start logbook-end)
+	    (goto-char logbook-start)
+	    (while (re-search-forward (concat "^" org-modified-string ".*\n") nil t)
+	      (replace-match "")))
+
+	  ;; Check if the drawer is empty and suppress if it's the case
+	  (goto-char logbook-start)
+	  (when (looking-at ":LOGBOOK:\n:END:")
+	    (kill-line 2)))))
+
+    (when org-modified-mode-p
+      (org-modified-mode 1))
+    )
+  )
+
+(defun org-modified-clear-timestamp (&optional recursive)
+  "Clear the MODIFIED timestamp from LOGBOOK drawers.
+If RECURSIVE is non-nil, apply to all subheadings recursively."
+  (save-excursion
+    (org-back-to-heading t) ; Move to the start of the current heading
+    (org-modified--clear-modified-entries) ; Clear entries for the current heading
+    (when recursive
+      (save-restriction
+	(org-narrow-to-subtree)     
+	(org-map-entries 'org-modified--clear-modified-entries nil nil)))))
 
 ;;;###autoload
 (define-minor-mode org-modified-mode
