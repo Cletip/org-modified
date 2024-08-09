@@ -311,6 +311,7 @@ DATE is expected to be in a human-readable format."
       (org-modified-mode -1))
 
     (save-excursion
+      ;; todo search just for the current heading
       (when (re-search-forward (concat ":" (org-log-into-drawer) ":") nil t)
 	(let ((logbook-start (line-beginning-position))
 	      (logbook-end (save-excursion (re-search-forward ":END:" nil t))))
@@ -335,7 +336,7 @@ DATE is expected to be in a human-readable format."
   "Clear the MODIFIED timestamp from LOGBOOK drawers.
 If RECURSIVE is non-nil, apply to all subheadings recursively."
   (save-excursion
-    (org-back-to-heading t) ; Move to the start of the current heading
+    (funcall org-modified-back-to-heading)
     (org-modified--clear-modified-entries) ; Clear entries for the current heading
     (when recursive
       (save-restriction
